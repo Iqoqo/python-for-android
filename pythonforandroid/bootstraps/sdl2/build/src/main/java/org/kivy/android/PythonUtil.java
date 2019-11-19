@@ -29,14 +29,11 @@ public class PythonUtil {
         }
     }
 
-    protected static ArrayList<String> getLibraries(File filesDir) {
-
-        String libsDirPath = filesDir.getParentFile().getParentFile().getAbsolutePath() + "/lib/";
-        File libsDir = new File(libsDirPath);
-
+    protected static ArrayList<String> getLibraries(File libsDir) {
         ArrayList<String> libsList = new ArrayList<String>();
-        addLibraryIfExists(libsList, "crystax", libsDir);
         addLibraryIfExists(libsList, "sqlite3", libsDir);
+        addLibraryIfExists(libsList, "ffi", libsDir);
+        addLibraryIfExists(libsList, "png16", libsDir);
         libsList.add("SDL2");
         libsList.add("SDL2_image");
         libsList.add("SDL2_mixer");
@@ -45,18 +42,19 @@ public class PythonUtil {
         addLibraryIfExists(libsList, "crypto.*", libsDir);
         libsList.add("python2.7");
         libsList.add("python3.5m");
+        libsList.add("python3.6m");
+        libsList.add("python3.7m");
         libsList.add("main");
         return libsList;
     }
 
-    public static void loadLibraries(File filesDir) {
-
+    public static void loadLibraries(File filesDir, File libsDir) {
         String filesDirPath = filesDir.getAbsolutePath();
         boolean foundPython = false;
 
-		for (String lib : getLibraries(filesDir)) {
+        for (String lib : getLibraries(libsDir)) {
             Log.v(TAG, "Loading library: " + lib);
-		    try {
+            try {
                 System.loadLibrary(lib);
                 if (lib.startsWith("python")) {
                     foundPython = true;
@@ -66,7 +64,7 @@ public class PythonUtil {
                 // load, and it has failed, give a more
                 // general error
                 Log.v(TAG, "Library loading error: " + e.getMessage());
-                if (lib.startsWith("python3.6") && !foundPython) {
+                if (lib.startsWith("python3.7") && !foundPython) {
                     throw new java.lang.RuntimeException("Could not load any libpythonXXX.so");
                 } else if (lib.startsWith("python")) {
                     continue;

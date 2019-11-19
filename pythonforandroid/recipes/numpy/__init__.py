@@ -1,53 +1,57 @@
-
-from pythonforandroid.toolchain import CompiledComponentsPythonRecipe, warning
+from pythonforandroid.recipe import CompiledComponentsPythonRecipe
+from multiprocessing import cpu_count
+from os.path import join
 
 
 class NumpyRecipe(CompiledComponentsPythonRecipe):
-    
-    version = '1.9.2'
-    url = 'https://pypi.python.org/packages/source/n/numpy/numpy-{version}.tar.gz'
-    site_packages_name= 'numpy'
 
-    depends = ['python2']
+    version = '1.16.4'
+    url = 'https://pypi.python.org/packages/source/n/numpy/numpy-{version}.zip'
+    site_packages_name = 'numpy'
 
-    patches = ['patches/fix-numpy.patch',
-               'patches/prevent_libs_check.patch',
-               'patches/ar.patch',
-               'patches/lib.patch']
+    patches = [
+        join('patches', 'add_libm_explicitly_to_build.patch'),
+        join('patches', 'do_not_use_system_libs.patch'),
+        join('patches', 'remove_unittest_call.patch'),
+        join('patches', 'ar.patch'),
+        join('patches', 'fix_setup_dependencies.patch'),
+        join('patches', 'fix_environment_detection.patch'),
+        ]
+
+    call_hostpython_via_targetpython = False
+
+    def build_compiled_components(self, arch):
+        self.setup_extra_args = ['-j', str(cpu_count())]
+        super(NumpyRecipe, self).build_compiled_components(arch)
+        self.setup_extra_args = []
+
+    def rebuild_compiled_components(self, arch, env):
+        self.setup_extra_args = ['-j', str(cpu_count())]
+        super(NumpyRecipe, self).rebuild_compiled_components(arch, env)
+        self.setup_extra_args = []
 
     def get_recipe_env(self, arch):
-        """ looks like numpy has no proper -L flags. Code copied and adapted from 
-            https://github.com/frmdstryr/p4a-numpy/
-        """
-
         env = super(NumpyRecipe, self).get_recipe_env(arch)
-        #: Hack add path L to crystax as a CFLAG
 
-        py_ver = '3.5'
-        if {'python2crystax', 'python2'} & set(self.ctx.recipe_build_order):
-            py_ver = '2.7'
+        flags = " -L{} --sysroot={}".format(
+            join(self.ctx.ndk_platform, 'usr', 'lib'),
+            self.ctx.ndk_platform
+        )
 
-        py_so = '2.7' if py_ver == '2.7' else '3.5m'
-    
-        api_ver = self.ctx.android_api
+        py_ver = self.ctx.python_recipe.major_minor_version_string
+        py_inc_dir = self.ctx.python_recipe.include_root(arch.arch)
+        py_lib_dir = self.ctx.python_recipe.link_root(arch.arch)
+        flags += ' -I{}'.format(py_inc_dir)
+        flags += ' -L{} -lpython{}'.format(py_lib_dir, py_ver)
+        if 'python3' in self.ctx.python_recipe.name:
+            flags += 'm'
 
-        platform = 'arm' if 'arm' in arch.arch else arch.arch
-        #: Not sure why but we have to inject these into the CC and LD env's for it to
-        #: use the correct arguments.
-        flags = " -L{ctx.ndk_dir}/platforms/android-{api_ver}/arch-{platform}/usr/lib/" \
-                " --sysroot={ctx.ndk_dir}/platforms/android-{api_ver}/arch-{platform}" \
-            .format(ctx=self.ctx, arch=arch, platform=platform, api_ver=api_ver,
-                    py_so=py_so, py_ver=py_ver)
         if flags not in env['CC']:
             env['CC'] += flags
         if flags not in env['LD']:
             env['LD'] += flags + ' -shared'
 
         return env
-
-    def prebuild_arch(self, arch):
-        super(NumpyRecipe, self).prebuild_arch(arch)
-
 
 
 recipe = NumpyRecipe()

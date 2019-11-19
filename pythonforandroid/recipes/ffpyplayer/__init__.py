@@ -1,15 +1,12 @@
-from pythonforandroid.toolchain import Recipe, CythonRecipe, shprint, current_directory, ArchARM
-from os.path import exists, join, realpath
-from os import uname
-import glob
-import sh
-import os
+from pythonforandroid.recipe import CythonRecipe
+from pythonforandroid.toolchain import Recipe
+from os.path import join
 
 
 class FFPyPlayerRecipe(CythonRecipe):
-    version = '6f7568b498715c2da88f061ebad082a042514923'
+    version = 'c99913f2317bf3840eeacf1c1c3db3b3d1f78007'
     url = 'https://github.com/matham/ffpyplayer/archive/{version}.zip'
-    depends = [('python2', 'python3crystax'), 'sdl2', 'ffmpeg']
+    depends = [('python2', 'python3'), 'sdl2', 'ffmpeg']
     opt_depends = ['openssl', 'ffpyplayer_codecs']
 
     def get_recipe_env(self, arch, with_flags_in_cc=True):
@@ -26,5 +23,6 @@ class FFPyPlayerRecipe(CythonRecipe):
         env["SDL2_MIXER_INCLUDE_DIR"] = join(self.ctx.bootstrap.build_dir, 'jni', 'SDL2_mixer')
 
         return env
+
 
 recipe = FFPyPlayerRecipe()

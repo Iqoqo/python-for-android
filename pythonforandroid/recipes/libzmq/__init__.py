@@ -5,9 +5,9 @@ import sh
 
 
 class LibZMQRecipe(Recipe):
-    version = '4.1.4'
-    url = 'http://download.zeromq.org/zeromq-{version}.tar.gz'
-    depends = ['python2']
+    version = '4.3.1'
+    url = 'https://github.com/zeromq/libzmq/releases/download/v{version}/zeromq-{version}.zip'
+    depends = []
 
     def should_build(self, arch):
         super(LibZMQRecipe, self).should_build(arch)
@@ -31,14 +31,15 @@ class LibZMQRecipe(Recipe):
             bash = sh.Command('sh')
             shprint(
                 bash, './configure',
-                '--host=arm-linux-androideabi',
+                '--host={}'.format(arch.command_prefix),
                 '--without-documentation',
                 '--prefix={}'.format(prefix),
                 '--with-libsodium=no',
+                '--disable-libunwind',
                 _env=env)
             shprint(sh.make, _env=env)
             shprint(sh.make, 'install', _env=env)
-            shutil.copyfile('.libs/libzmq.so', join(
+            shutil.copyfile('src/.libs/libzmq.so', join(
                 self.ctx.get_libs_dir(arch.arch), 'libzmq.so'))
 
             bootstrap_obj_dir = join(self.ctx.bootstrap.build_dir, 'obj', 'local', arch.arch)
@@ -51,9 +52,12 @@ class LibZMQRecipe(Recipe):
             # Copy libgnustl_shared.so
             with current_directory(self.get_build_dir(arch.arch)):
                 sh.cp(
-                    "{ctx.ndk_dir}/sources/cxx-stl/gnu-libstdc++/{ctx.toolchain_version}/libs/{arch.arch}/libgnustl_shared.so".format(ctx=self.ctx,arch=arch),
+                    "{ctx.ndk_dir}/sources/cxx-stl/gnu-libstdc++/{ctx.toolchain_version}/libs/{arch.arch}/libgnustl_shared.so".format(ctx=self.ctx, arch=arch),
                     self.ctx.get_libs_dir(arch.arch)
                 )
+
+    def get_include_dirs(self, arch):
+        return [join(self.get_build_dir(arch.arch), 'include')]
 
     def get_recipe_env(self, arch):
         # XXX should stl be configuration for the toolchain itself?
@@ -69,6 +73,8 @@ class LibZMQRecipe(Recipe):
         env['CXXFLAGS'] += ' -lgnustl_shared'
         env['LDFLAGS'] += ' -L{}/sources/cxx-stl/gnu-libstdc++/{}/libs/{}'.format(
             self.ctx.ndk_dir, self.ctx.toolchain_version, arch)
+        env['CXXFLAGS'] += ' --sysroot={}/platforms/android-{}/{}'.format(
+            self.ctx.ndk_dir, self.ctx.ndk_api, arch.platform_dir)
         return env
 
 

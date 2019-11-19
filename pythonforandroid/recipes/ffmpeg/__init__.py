@@ -1,15 +1,12 @@
-from pythonforandroid.toolchain import Recipe, shprint, current_directory, ArchARM
+from pythonforandroid.toolchain import Recipe, current_directory, shprint
 from os.path import exists, join, realpath
-from os import uname
-import glob
 import sh
-import os
-import shutil
 
 
 class FFMpegRecipe(Recipe):
-    version = '3.4.1'
-    url = 'http://ffmpeg.org/releases/ffmpeg-{version}.tar.bz2'
+    version = 'n3.4.5'
+    # Moved to github.com instead of ffmpeg.org to improve download speed
+    url = 'https://github.com/FFmpeg/FFmpeg/archive/{version}.zip'
     depends = ['sdl2']  # Need this to build correct recipe order
     opts_depends = ['openssl', 'ffpyplayer_codecs']
     patches = ['patches/configure.patch']
@@ -36,7 +33,7 @@ class FFMpegRecipe(Recipe):
 
             if 'openssl' in self.ctx.recipe_build_order:
                 flags += [
-                    '--enable-openssl', 
+                    '--enable-openssl',
                     '--enable-nonfree',
                     '--enable-protocol=https,tls_openssl',
                 ]
@@ -44,7 +41,7 @@ class FFMpegRecipe(Recipe):
                 cflags += ['-I' + build_dir + '/include/']
                 ldflags += ['-L' + build_dir]
 
-            if 'ffpyplayer_codecs' in self.ctx.recipe_build_order:                
+            if 'ffpyplayer_codecs' in self.ctx.recipe_build_order:
                 # libx264
                 flags += ['--enable-libx264']
                 build_dir = Recipe.get_recipe('libx264', self.ctx).get_build_dir(arch.arch)
@@ -91,7 +88,7 @@ class FFMpegRecipe(Recipe):
 
             # other flags:
             flags += [
-                '--enable-filter=aresample,resample,crop,adelay,volume',
+                '--enable-filter=aresample,resample,crop,adelay,volume,scale',
                 '--enable-protocol=file,http',
                 '--enable-small',
                 '--enable-hwaccels',
@@ -101,20 +98,29 @@ class FFMpegRecipe(Recipe):
                 '--enable-shared',
             ]
 
+            if 'arm64' in arch.arch:
+                cross_prefix = 'aarch64-linux-android-'
+                arch_flag = 'aarch64'
+            else:
+                cross_prefix = 'arm-linux-androideabi-'
+                arch_flag = 'arm'
+
             # android:
             flags += [
-                '--target-os=android', 
-                '--cross-prefix=arm-linux-androideabi-', 
-                '--arch=arm',
+                '--target-os=android',
+                '--cross-prefix={}'.format(cross_prefix),
+                '--arch={}'.format(arch_flag),
                 '--sysroot=' + self.ctx.ndk_platform,
                 '--enable-neon',
                 '--prefix={}'.format(realpath('.')),
             ]
-            cflags += [
-                '-mfpu=vfpv3-d16', 
-                '-mfloat-abi=softfp', 
-                '-fPIC',
-            ]
+
+            if arch_flag == 'arm':
+                cflags += [
+                    '-mfpu=vfpv3-d16',
+                    '-mfloat-abi=softfp',
+                    '-fPIC',
+                ]
 
             env['CFLAGS'] += ' ' + ' '.join(cflags)
             env['LDFLAGS'] += ' ' + ' '.join(ldflags)
@@ -124,6 +130,8 @@ class FFMpegRecipe(Recipe):
             shprint(sh.make, '-j4', _env=env)
             shprint(sh.make, 'install', _env=env)
             # copy libs:
-            sh.cp('-a', sh.glob('./lib/lib*.so'), self.ctx.get_libs_dir(arch.arch))
+            sh.cp('-a', sh.glob('./lib/lib*.so'),
+                  self.ctx.get_libs_dir(arch.arch))
+
 
 recipe = FFMpegRecipe()

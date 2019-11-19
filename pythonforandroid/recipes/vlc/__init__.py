@@ -3,7 +3,7 @@ from pythonforandroid.logger import info, debug, shprint, warning
 from os.path import join, isdir, isfile
 from os import environ
 import sh
-from colorama import Fore, Style
+
 
 class VlcRecipe(Recipe):
     version = '3.0.0'
@@ -15,7 +15,7 @@ class VlcRecipe(Recipe):
     port_git = 'http://git.videolan.org/git/vlc-ports/android.git'
 #    vlc_git = 'http://git.videolan.org/git/vlc.git'
     ENV_LIBVLC_AAR = 'LIBVLC_AAR'
-    aars = {} # for future use of multiple arch
+    aars = {}  # for future use of multiple arch
 
     def prebuild_arch(self, arch):
         super(VlcRecipe, self).prebuild_arch(arch)
@@ -33,15 +33,15 @@ class VlcRecipe(Recipe):
         else:
             aar_path = join(port_dir, 'libvlc', 'build', 'outputs', 'aar')
             self.aars[arch] = aar = join(aar_path, 'libvlc-{}.aar'.format(self.version))
-            warning("HINT: set path to precompiled libvlc-<ver>.aar bundle " \
-                        "in {} environment!".format(self.ENV_LIBVLC_AAR))
-            info("libvlc-<ver>.aar should build " \
-                        "from sources at {}".format(port_dir))
+            warning("HINT: set path to precompiled libvlc-<ver>.aar bundle "
+                    "in {} environment!".format(self.ENV_LIBVLC_AAR))
+            info("libvlc-<ver>.aar should build "
+                 "from sources at {}".format(port_dir))
             if not isfile(join(port_dir, 'compile.sh')):
                 info("clone vlc port for android sources from {}".format(
                             self.port_git))
                 shprint(sh.git, 'clone', self.port_git, port_dir,
-                            _tail=20, _critical=True)
+                        _tail=20, _critical=True)
 # now "git clone ..." is a part of compile.sh
 #            vlc_dir = join(port_dir, 'vlc')
 #            if not isfile(join(vlc_dir, 'Makefile.am')):
@@ -65,10 +65,11 @@ class VlcRecipe(Recipe):
                 info("compiling vlc from sources")
                 debug("environment: {}".format(env))
                 if not isfile(join('bin', 'VLC-debug.apk')):
-                     shprint(sh.Command('./compile.sh'), _env=env,
-                                  _tail=50, _critical=True)
-                shprint(sh.Command('./compile-libvlc.sh'), _env=env,
+                    shprint(sh.Command('./compile.sh'), _env=env,
                             _tail=50, _critical=True)
+                shprint(sh.Command('./compile-libvlc.sh'), _env=env,
+                        _tail=50, _critical=True)
         shprint(sh.cp, '-a', aar, self.ctx.aars_dir)
+
 
 recipe = VlcRecipe()
